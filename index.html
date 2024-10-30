@@ -17,9 +17,32 @@
     <input type="text" id="urlInput" placeholder="Enter URL here">
     <button onclick="generateQRCode()">Generate QR Code</button>
     <canvas id="qrcodeCanvas"></canvas>
-    <a id="downloadLink" style="display: none;">Download QR Code</a>
+    <a id="downloadLink" style="display: none;" onclick="promptFilename(event)">Download QR Code</a>
 
     <script>
+        function formatFilename(url) {
+            try {
+                const urlObj = new URL(url);
+                const hostname = urlObj.hostname.replace(/\./g, "_");
+                const path = urlObj.pathname.replace(/\//g, "_").replace(/^_+|_+$/g, ""); // Replace / with _ and trim _ from ends
+                return hostname + (path ? "_" + path : "");
+            } catch (error) {
+                console.error("Invalid URL:", error);
+                return "qrcode";
+            }
+        }
+
+        function promptFilename(event) {
+            const link = event.currentTarget;
+            const defaultFilename = link.download.replace(".png", "");
+            const userFilename = prompt("Enter the desired filename:", defaultFilename);
+            if (userFilename && /^[\w\-]+$/.test(userFilename)) {  // Checks for a valid filename
+                link.download = userFilename + ".png";
+            } else if (userFilename !== null) {
+                alert("Invalid filename. Using default.");
+            }
+        }
+
         function generateQRCode() {
             const url = document.getElementById("urlInput").value;
             const canvas = document.getElementById("qrcodeCanvas");
@@ -28,9 +51,10 @@
                 QRCode.toCanvas(canvas, url, { width: 256, height: 256 }, function (error) {
                     if (error) console.error(error);
                     else {
+                        const filename = formatFilename(url) + ".png";
                         const downloadLink = document.getElementById("downloadLink");
                         downloadLink.href = canvas.toDataURL("image/png");
-                        downloadLink.download = "qrcode.png";
+                        downloadLink.download = filename;
                         downloadLink.style.display = "inline-block";
                         downloadLink.innerText = "Download QR Code";
                     }
