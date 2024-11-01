@@ -7,22 +7,13 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; margin-top: 50px; }
-        input { margin: 10px; padding: 10px; width: 300px; }
-        select { margin: 10px; padding: 10px; width: 150px; }
+        input, select { margin: 10px; padding: 10px; width: 300px; }
         button { padding: 10px 20px; cursor: pointer; }
-        .qr-frame {
-            border: 5px solid black; /* Frame color */
-            padding: 10px; /* Space between frame and QR code */
-            border-radius: 10px; /* Rounded corners */
-            margin-top: 20px; /* Space above the frame */
-            display: none; /* Initially hidden */
-        }
-        canvas { display: block; } /* Make canvas a block element */
-
-        input[type="checkbox"] {
-            margin-right: -140px; /* Adjust this value to reduce space between checkbox and text */
-            margin-left: -140px;
-        }
+        .qr-frame { border: 5px solid black; padding: 10px; border-radius: 10px; margin-top: 20px; display: none; }
+        canvas { display: block; }
+        .color-options { display: flex; gap: 10px; margin-top: 10px; }
+        #sizeOptions { margin-top: 20px; display: none; flex-direction: column; align-items: center; }
+        input[type="checkbox"] { margin-right: -140px; margin-left: -140px; }
     </style>
 </head>
 <body>
@@ -34,29 +25,46 @@
     </label>
 
     <div id="colorOptions" style="display: none;">
-        <label for="bgColor">Select Background Color:</label>
-        <select id="bgColor">
-            <option value="#ffffff">White</option>
-            <option value="#000000">Black</option>
-            <option value="#ffcccc">Light Red</option>
-            <option value="#ccffcc">Light Green</option>
-            <option value="#ccccff">Light Blue</option>
-            <option value="#ffffcc">Light Yellow</option>
-            <option value="#f2ccff">Light Purple</option>
-            <option value="#ffe6cc">Light Orange</option>
-        </select>
+        <div class="color-options">
+            <div>
+                <label for="bgColor">Background Color:</label>
+                <select id="bgColor">
+                    <option value="#ffffff">White</option>
+                    <option value="#000000">Black</option>
+                    <option value="#ffcccc">Light Red</option>
+                    <option value="#ccffcc">Light Green</option>
+                    <option value="#ccccff">Light Blue</option>
+                    <option value="#ffffcc">Light Yellow</option>
+                    <option value="#f2ccff">Light Purple</option>
+                    <option value="#ffe6cc">Light Orange</option>
+                    <option value="transparent">Transparent</option> <!-- New Transparent Option -->
+                </select>
+            </div>
+            <div>
+                <label for="qrColor">QR Code Color:</label>
+                <select id="qrColor">
+                    <option value="#000000">Black</option>
+                    <option value="#ffffff">White</option>
+                    <option value="#ff0000">Red</option>
+                    <option value="#00ff00">Green</option>
+                    <option value="#0000ff">Blue</option>
+                    <option value="#ffff00">Yellow</option>
+                    <option value="#ff00ff">Magenta</option>
+                    <option value="#00ffff">Cyan</option>
+                </select>
+            </div>
+        </div>
 
-        <label for="qrColor">Select QR Code Color:</label>
-        <select id="qrColor">
-            <option value="#000000">Black</option>
-            <option value="#ffffff">White</option>
-            <option value="#ff0000">Red</option>
-            <option value="#00ff00">Green</option>
-            <option value="#0000ff">Blue</option>
-            <option value="#ffff00">Yellow</option>
-            <option value="#ff00ff">Magenta</option>
-            <option value="#00ffff">Cyan</option>
-        </select>
+        <div id="sizeOptions">
+            <label for="qrSize">QR Code Size:</label>
+            <select id="qrSize">
+                <option value="256">256x256</option>
+                <option value="512" selected>512x512</option>
+                <option value="1024">1024x1024</option>
+                <option value="custom">Custom</option>
+            </select>
+            <input type="number" id="customSize" placeholder="Enter custom size in pixels" style="display: none;" min="100" max="2000">
+        </div>
     </div>
 
     <button onclick="generateQRCode()">Generate QR Code</button>
@@ -95,25 +103,29 @@
             const url = document.getElementById("urlInput").value;
             const canvas = document.getElementById("qrcodeCanvas");
             const qrFrame = document.getElementById("qrFrame");
-            const bgColor = document.getElementById("bgColor").value || "#ffffff"; // Default to white
-            const qrColor = document.getElementById("qrColor").value || "#000000"; // Default to black
+            const bgColor = document.getElementById("bgColor").value;
+            const qrColor = document.getElementById("qrColor").value || "#000000";
             const customizeColors = document.getElementById("customizeColors").checked;
+            let size = parseInt(document.getElementById("qrSize").value);
+            
+            if (document.getElementById("qrSize").value === "custom") {
+                const customSize = document.getElementById("customSize").value;
+                size = customSize ? parseInt(customSize) : size;
+            }
 
             if (!url) {
                 alert("Please enter a URL!");
                 return;
             }
-            if(qrColor == bgColor){
-                alert("QR-Code can not have the same color as the Background");
+            if (qrColor === bgColor && bgColor !== "transparent") {
+                alert("QR Code color cannot match the background color.");
                 return;
             }
 
-            // Use default colors if customization is not selected
-            const finalBgColor = customizeColors ? bgColor : "#ffffff";
+            const finalBgColor = customizeColors ? (bgColor === "transparent" ? null : bgColor) : "#ffffff";
             const finalQrColor = customizeColors ? qrColor : "#000000";
 
-            // Generate QR code
-            QRCode.toCanvas(canvas, url, { width: 512, height: 512, color: { dark: finalQrColor, light: finalBgColor } }, function (error) {
+            QRCode.toCanvas(canvas, url, { width: size, height: size, color: { dark: finalQrColor, light: finalBgColor || "#ffffff00" } }, function (error) {
                 if (error) console.error(error);
                 else {
                     const filename = formatFilename(url) + ".png";
@@ -123,15 +135,21 @@
                     downloadLink.style.display = "inline-block";
                     downloadLink.innerText = "Download QR Code";
                     
-                    // Show the frame
                     qrFrame.style.display = "block";
                 }
             });
         }
 
-        // Show/hide color options based on checkbox
         document.getElementById("customizeColors").addEventListener('change', function() {
-            document.getElementById("colorOptions").style.display = this.checked ? "block" : "none";
+            const colorOptions = document.getElementById("colorOptions");
+            const sizeOptions = document.getElementById("sizeOptions");
+            colorOptions.style.display = this.checked ? "block" : "none";
+            sizeOptions.style.display = this.checked ? "flex" : "none";
+        });
+
+        document.getElementById("qrSize").addEventListener('change', function() {
+            const customSizeInput = document.getElementById("customSize");
+            customSizeInput.style.display = this.value === "custom" ? "block" : "none";
         });
     </script>
 </body>
