@@ -8,15 +8,63 @@
     <style>
         body { font-family: Arial, sans-serif; display: flex; flex-direction: column; align-items: center; margin-top: 50px; }
         input { margin: 10px; padding: 10px; width: 300px; }
+        select { margin: 10px; padding: 10px; width: 150px; }
         button { padding: 10px 20px; cursor: pointer; }
-        canvas { margin-top: 20px; }
+        .qr-frame {
+            border: 5px solid black; /* Frame color */
+            padding: 10px; /* Space between frame and QR code */
+            border-radius: 10px; /* Rounded corners */
+            margin-top: 20px; /* Space above the frame */
+            display: none; /* Initially hidden */
+        }
+        canvas { display: block; } /* Make canvas a block element */
+
+        input[type="checkbox"] {
+            margin-right: -140px; /* Adjust this value to reduce space between checkbox and text */
+            margin-left: -140px;
+        }
     </style>
 </head>
 <body>
     <h1>QR Code Generator</h1>
     <input type="text" id="urlInput" placeholder="Enter URL here">
+    
+    <label>
+        <input type="checkbox" id="customizeColors"> Customize Colors
+    </label>
+
+    <div id="colorOptions" style="display: none;">
+        <label for="bgColor">Select Background Color:</label>
+        <select id="bgColor">
+            <option value="#ffffff">White</option>
+            <option value="#000000">Black</option>
+            <option value="#ffcccc">Light Red</option>
+            <option value="#ccffcc">Light Green</option>
+            <option value="#ccccff">Light Blue</option>
+            <option value="#ffffcc">Light Yellow</option>
+            <option value="#f2ccff">Light Purple</option>
+            <option value="#ffe6cc">Light Orange</option>
+        </select>
+
+        <label for="qrColor">Select QR Code Color:</label>
+        <select id="qrColor">
+            <option value="#000000">Black</option>
+            <option value="#ffffff">White</option>
+            <option value="#ff0000">Red</option>
+            <option value="#00ff00">Green</option>
+            <option value="#0000ff">Blue</option>
+            <option value="#ffff00">Yellow</option>
+            <option value="#ff00ff">Magenta</option>
+            <option value="#00ffff">Cyan</option>
+        </select>
+    </div>
+
     <button onclick="generateQRCode()">Generate QR Code</button>
-    <canvas id="qrcodeCanvas"></canvas>
+    
+    <div class="qr-frame" id="qrFrame">
+        <canvas id="qrcodeCanvas"></canvas>
+    </div>
+    
     <a id="downloadLink" style="display: none;" onclick="promptFilename(event)">Download QR Code</a>
 
     <script>
@@ -24,7 +72,7 @@
             try {
                 const urlObj = new URL(url);
                 const hostname = urlObj.hostname.replace(/\./g, "_");
-                const path = urlObj.pathname.replace(/\//g, "_").replace(/^_+|_+$/g, ""); // Replace / with _ and trim _ from ends
+                const path = urlObj.pathname.replace(/\//g, "_").replace(/^_+|_+$/g, "");
                 return hostname + (path ? "_" + path : "");
             } catch (error) {
                 console.error("Invalid URL:", error);
@@ -36,7 +84,7 @@
             const link = event.currentTarget;
             const defaultFilename = link.download.replace(".png", "");
             const userFilename = prompt("Enter the desired filename:", defaultFilename);
-            if (userFilename && /^[\w\-]+$/.test(userFilename)) {  // Checks for a valid filename
+            if (userFilename && /^[\w\-]+$/.test(userFilename)) {
                 link.download = userFilename + ".png";
             } else if (userFilename !== null) {
                 alert("Invalid filename. Using default.");
@@ -46,23 +94,45 @@
         function generateQRCode() {
             const url = document.getElementById("urlInput").value;
             const canvas = document.getElementById("qrcodeCanvas");
+            const qrFrame = document.getElementById("qrFrame");
+            const bgColor = document.getElementById("bgColor").value || "#ffffff"; // Default to white
+            const qrColor = document.getElementById("qrColor").value || "#000000"; // Default to black
+            const customizeColors = document.getElementById("customizeColors").checked;
 
-            if (url) {
-                QRCode.toCanvas(canvas, url, { width: 256, height: 256 }, function (error) {
-                    if (error) console.error(error);
-                    else {
-                        const filename = formatFilename(url) + ".png";
-                        const downloadLink = document.getElementById("downloadLink");
-                        downloadLink.href = canvas.toDataURL("image/png");
-                        downloadLink.download = filename;
-                        downloadLink.style.display = "inline-block";
-                        downloadLink.innerText = "Download QR Code";
-                    }
-                });
-            } else {
+            if (!url) {
                 alert("Please enter a URL!");
+                return;
             }
+            if(qrColor == bgColor){
+                alert("QR-Code can not have the same color as the Background");
+                return;
+            }
+
+            // Use default colors if customization is not selected
+            const finalBgColor = customizeColors ? bgColor : "#ffffff";
+            const finalQrColor = customizeColors ? qrColor : "#000000";
+
+            // Generate QR code
+            QRCode.toCanvas(canvas, url, { width: 512, height: 512, color: { dark: finalQrColor, light: finalBgColor } }, function (error) {
+                if (error) console.error(error);
+                else {
+                    const filename = formatFilename(url) + ".png";
+                    const downloadLink = document.getElementById("downloadLink");
+                    downloadLink.href = canvas.toDataURL("image/png");
+                    downloadLink.download = filename;
+                    downloadLink.style.display = "inline-block";
+                    downloadLink.innerText = "Download QR Code";
+                    
+                    // Show the frame
+                    qrFrame.style.display = "block";
+                }
+            });
         }
+
+        // Show/hide color options based on checkbox
+        document.getElementById("customizeColors").addEventListener('change', function() {
+            document.getElementById("colorOptions").style.display = this.checked ? "block" : "none";
+        });
     </script>
 </body>
 </html>
